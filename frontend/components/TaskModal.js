@@ -41,10 +41,12 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
   // Check if any selected dependency is incomplete (not 'Done')
   const hasIncompleteDependencies = useMemo(() => {
     return selectedDependencies.some(depId => {
+      const depDetail = taskToEdit?.dependencyDetails?.find(d => d.id === depId);
+      if (depDetail) return !depDetail.isDone;
       const depTask = tasks.find(t => t.id === depId);
       return !depTask || depTask.status !== 'Done';
     });
-  }, [selectedDependencies, tasks]);
+  }, [selectedDependencies, tasks, taskToEdit]);
 
   const PRIORITY_RANKS = { High: 3, Medium: 2, Low: 1 };
 
@@ -175,7 +177,23 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
   };
 
   // Available tasks to depend on (excluding current task if editing)
-  const availableTasks = tasks.filter(t => !taskToEdit || t.id !== taskToEdit.id);
+  const availableTasks = useMemo(() => {
+    const list = [...tasks];
+    if (taskToEdit?.dependencyDetails) {
+      taskToEdit.dependencyDetails.forEach(dep => {
+        if (!list.some(t => t.id === dep.id)) {
+          list.push({
+            id: dep.id,
+            title: dep.title,
+            status: dep.status,
+            priority: dep.priority,
+            dependencies: []
+          });
+        }
+      });
+    }
+    return list.filter(t => !taskToEdit || t.id !== taskToEdit.id);
+  }, [tasks, taskToEdit]);
 
   // If non-admin tries to open create task modal
   const isCreateBlockedForMember = !taskToEdit && !isAdmin;
@@ -353,6 +371,7 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
                     return (
                       <label 
                         key={t.id} 
+                        htmlFor={`dep-check-${t.id}`}
                         style={{ 
                           display: 'flex', 
                           alignItems: 'center', 
@@ -367,10 +386,11 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
                         }}
                       >
                         <input
+                          id={`dep-check-${t.id}`}
                           type="checkbox"
                           checked={isChecked}
                           disabled={isCycleRisk || isCreateBlockedForMember}
-                          onChange={() => !isCycleRisk && toggleDependency(t.id)}
+                          onChange={() => !isCycleRisk && !isCreateBlockedForMember && toggleDependency(t.id)}
                         />
                         <span style={{ color: '#fff', fontWeight: 600 }}>{t.title}</span>
 

@@ -9,7 +9,7 @@
     "dev": "npx concurrently \"npm run backend\" \"npm run frontend\"",
     "start": "npx concurrently \"npm run backend\" \"npm run frontend\"",
     "test:unit": "node testDependenciesComprehensive.js",
-    "test:integration": "node testApi.js && node testProgressionAndPriority.js && node testRolePermissions.js && node testHttpDependencies.js && node testUserJourneyWorkflow.js",
+    "test:integration": "node testApi.js && node testProgressionAndPriority.js && node testRolePermissions.js && node testHttpDependencies.js && node testUserJourneyWorkflow.js && node testTaskDependencyOptions.js",
     "test": "npm run test:unit && npm run test:integration"
   },
   "dependencies": {

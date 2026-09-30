@@ -3,7 +3,7 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import TaskCard from './TaskCard';
-import { ShieldAlert, Lock, CheckCircle2, Check } from 'lucide-react';
+import { ShieldAlert, Lock, CheckCircle2, Check, Play } from 'lucide-react';
 
 export default function BlockedTasksView({ onEditTask }) {
   const { tasks, updateTask } = useApp();
@@ -102,6 +102,21 @@ export default function BlockedTasksView({ onEditTask }) {
                             >
                               <Lock size={10} /> Also Blocked
                             </span>
+                          ) : fullDepTask.status === 'To Do' ? (
+                            <button
+                              onClick={() => updateTask(fullDepTask.id, { status: 'In Progress' })}
+                              className="btn-primary"
+                              style={{ 
+                                padding: '3px 8px', 
+                                fontSize: '0.72rem', 
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 3
+                              }}
+                              title="Start this prerequisite task (move to In Progress)"
+                            >
+                              <Play size={11} /> Start Task
+                            </button>
                           ) : (
                             <button
                               onClick={() => updateTask(fullDepTask.id, { status: 'Done' })}

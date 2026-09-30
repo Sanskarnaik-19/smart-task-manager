@@ -22,7 +22,8 @@ import {
   ChevronRight,
   Eye,
   AlertCircle,
-  X
+  X,
+  Filter
 } from 'lucide-react';
 
 export default function DependencyGraphView() {
@@ -31,6 +32,15 @@ export default function DependencyGraphView() {
   const [loading, setLoading] = useState(true);
   const [activeSubView, setActiveSubView] = useState('pipeline'); // 'pipeline', 'matrix', 'linker'
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [filterBlockedOnly, setFilterBlockedOnly] = useState(false);
+
+  // Available tasks for dependency management
+  const availableTasksForLinking = useMemo(() => {
+    if (graphData.nodes && graphData.nodes.length > 0) {
+      return graphData.nodes;
+    }
+    return tasks;
+  }, [graphData.nodes, tasks]);
 
   // Linker state
   const [linkerSource, setLinkerSource] = useState('');
@@ -146,8 +156,12 @@ export default function DependencyGraphView() {
       return;
     }
 
-    const targetTask = tasks.find(t => t.id === linkerTarget);
-    if (!targetTask) return;
+    const allTasks = graphData.nodes?.length > 0 ? graphData.nodes : tasks;
+    const targetTask = allTasks.find(t => t.id === linkerTarget);
+    if (!targetTask) {
+      setLinkerError('Target task not found.');
+      return;
+    }
 
     const existingDeps = targetTask.dependencies || [];
     if (existingDeps.includes(linkerSource)) {
@@ -172,7 +186,8 @@ export default function DependencyGraphView() {
 
   // Handle Removing Dependency Link
   const handleRemoveDependency = async (targetId, prereqId) => {
-    const targetTask = tasks.find(t => t.id === targetId);
+    const allTasks = graphData.nodes?.length > 0 ? graphData.nodes : tasks;
+    const targetTask = allTasks.find(t => t.id === targetId);
     if (!targetTask) return;
 
     try {
@@ -590,7 +605,7 @@ export default function DependencyGraphView() {
                   required
                 >
                   <option value="">Select target task...</option>
-                  {tasks.map(t => (
+                  {availableTasksForLinking.map(t => (
                     <option key={t.id} value={t.id}>
                       {t.title} ({t.status})
                     </option>
@@ -607,7 +622,7 @@ export default function DependencyGraphView() {
                   required
                 >
                   <option value="">Select prerequisite task...</option>
-                  {tasks.map(t => (
+                  {availableTasksForLinking.map(t => (
                     <option key={t.id} value={t.id}>
                       {t.title} ({t.status})
                     </option>

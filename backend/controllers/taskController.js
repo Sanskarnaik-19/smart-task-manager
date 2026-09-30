@@ -461,6 +461,7 @@ const getDependencyGraph = (req, res) => {
         title: task.title,
         priority: task.priority,
         status: task.status,
+        dependencies: task.dependencies || [],
         isBlocked,
         assignedTo: task.assignedTo,
         assigneeName: assignedUser ? assignedUser.name : 'Unassigned',

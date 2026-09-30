@@ -2,7 +2,7 @@
  * API Client for Smart Task Manager Backend
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined' ? '/api' : 'http://localhost:5000/api');
 
 /**
  * Generic fetch wrapper with error handling
