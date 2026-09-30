@@ -1,0 +1,18 @@
+{
+  "name": "smart-task-manager-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix backend install && npm --prefix frontend install",
+    "backend": "npm --prefix backend run dev",
+    "frontend": "npm --prefix frontend run dev",
+    "dev": "npx concurrently \"npm run backend\" \"npm run frontend\"",
+    "start": "npx concurrently \"npm run backend\" \"npm run frontend\"",
+    "test:unit": "node testDependenciesComprehensive.js",
+    "test:integration": "node testApi.js && node testProgressionAndPriority.js && node testRolePermissions.js && node testHttpDependencies.js && node testUserJourneyWorkflow.js",
+    "test": "npm run test:unit && npm run test:integration"
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
