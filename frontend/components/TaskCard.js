@@ -24,6 +24,7 @@ export default function TaskCard({ task, onEdit, isNextRecommended = false }) {
   const { updateTask, deleteTask, tasks, currentUser } = useApp();
 
   const currentRank = PRIORITY_RANKS[task.priority] || 2;
+  const isAdmin = currentUser?.role === 'Admin';
 
   // Check if current user has permission to mark this task as Done:
   // When assigned to a member, another member cannot mark it as Done.
@@ -32,9 +33,6 @@ export default function TaskCard({ task, onEdit, isNextRecommended = false }) {
   const hasCompletionPermission = !isMember || isAssignedToCurrentUser;
 
   // Check if there are any strictly higher-priority tasks that are ELIGIBLE (unblocked) and incomplete
-  // CRITICAL RULE:
-  // "if a High-priority task is blocked because its prerequisite tasks are not Done,
-  // select the next eligible task rather than breaking the dependency rules."
   const higherPriorityBlockers = useMemo(() => {
     return tasks.filter(t => {
       if (t.id === task.id || t.status === 'Done') return false;
@@ -45,7 +43,6 @@ export default function TaskCard({ task, onEdit, isNextRecommended = false }) {
       if (t.dependencies && t.dependencies.includes(task.id)) return false;
 
       // If the higher-priority task is BLOCKED by its own prerequisites, it is NOT eligible!
-      // Therefore, it does NOT prevent completing this task.
       return !t.isBlocked;
     });
   }, [tasks, task, currentRank]);
@@ -84,21 +81,9 @@ export default function TaskCard({ task, onEdit, isNextRecommended = false }) {
     >
       {/* Top Banner if this is the Next Recommended Task */}
       {isNextRecommended && task.status !== 'Done' && (
-        <div style={{
-          background: 'linear-gradient(90deg, rgba(99, 102, 241, 0.25), rgba(139, 92, 246, 0.25))',
-          border: '1px solid rgba(99, 102, 241, 0.4)',
-          borderRadius: 8,
-          padding: '4px 8px',
-          marginBottom: 8,
-          fontSize: '0.72rem',
-          fontWeight: 700,
-          color: '#A5B4FC',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6
-        }}>
+        <div className="next-recommended-badge">
           <Sparkles size={12} style={{ color: '#818CF8' }} />
-          <span>Priority Selection: Next Task to Handle</span>
+          <span>Priority Selection: Next Task</span>
         </div>
       )}
 
@@ -114,16 +99,21 @@ export default function TaskCard({ task, onEdit, isNextRecommended = false }) {
             className="icon-btn" 
             onClick={() => onEdit(task)}
             title="Edit Task"
+            aria-label="Edit Task"
           >
             <Edit3 size={15} />
           </button>
-          <button 
-            className="icon-btn danger" 
-            onClick={() => deleteTask(task.id)}
-            title="Delete Task"
-          >
-            <Trash2 size={15} />
-          </button>
+
+          {(isAdmin || isAssignedToCurrentUser) && (
+            <button 
+              className="icon-btn danger" 
+              onClick={() => deleteTask(task.id)}
+              title="Delete Task"
+              aria-label="Delete Task"
+            >
+              <Trash2 size={15} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -154,30 +144,29 @@ export default function TaskCard({ task, onEdit, isNextRecommended = false }) {
       {/* Blocked Warning Banner */}
       {task.isBlocked && (
         <div className="blocked-warning-box">
-          <Lock size={16} className="shrink-0 text-rose-400" />
+          <Lock size={15} className="shrink-0" />
           <div>
-            Blocked by {task.blockingTasks?.length || 1} incomplete prerequisite(s).
+            Blocked: {task.blockingTasks?.length || 1} incomplete prerequisite(s)
           </div>
         </div>
       )}
 
       {/* Higher Priority Pending Warning Banner */}
       {!task.isBlocked && hasHigherPriorityBlocker && task.status !== 'Done' && (
-        <div style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: 8, padding: '6px 10px', fontSize: '0.74rem', color: '#FBBF24', display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+        <div className="priority-warning-box">
           <AlertTriangle size={13} className="shrink-0" />
           <span>Complete higher-priority task first: <strong>{higherPriorityBlockers[0]?.title}</strong></span>
         </div>
       )}
 
       {/* Card Action Button Bar (Direct 1-Click Progression) */}
-      <div style={{ marginTop: '0.85rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="task-card-action-bar">
         {task.status === 'To Do' && (
           <button
             onClick={() => handleTransition('In Progress')}
-            className="btn-primary"
-            style={{ width: '100%', padding: '6px 10px', fontSize: '0.78rem', justifyContent: 'center', gap: 6 }}
+            className="btn-primary touch-action-btn"
           >
-            <Play size={13} /> Start Task (Move to In Progress)
+            <Play size={14} fill="currentColor" /> Start Task
           </button>
         )}
 
@@ -185,55 +174,26 @@ export default function TaskCard({ task, onEdit, isNextRecommended = false }) {
           canMarkDone ? (
             <button
               onClick={() => handleTransition('Done')}
-              style={{
-                width: '100%',
-                padding: '6px 10px',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, #10B981, #059669)',
-                color: '#fff',
-                border: '1px solid #34D399',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                cursor: 'pointer',
-                boxShadow: '0 2px 10px rgba(16, 185, 129, 0.3)',
-                transition: 'all 0.15s ease'
-              }}
+              className="touch-action-btn done-action-btn"
             >
-              <Check size={14} /> Mark as Done
+              <Check size={16} /> Mark as Done
             </button>
           ) : (
-            <div style={{
-              width: '100%',
-              padding: '6px 10px',
-              fontSize: '0.74rem',
-              borderRadius: 8,
-              background: 'rgba(255,255,255,0.04)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              color: '#9CA3AF',
-              textAlign: 'center',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 5
-            }}>
+            <div className="blocked-action-indicator">
               {!hasCompletionPermission ? (
                 <>
-                  <Lock size={12} style={{ color: '#F43F5E' }} />
-                  <span>Cannot mark Done (Assigned to {task.assignedUser?.name || 'another member'})</span>
+                  <Lock size={13} style={{ color: '#F43F5E' }} />
+                  <span>Assigned to {task.assignedUser?.name || 'another member'}</span>
                 </>
               ) : task.isBlocked ? (
                 <>
-                  <Lock size={12} style={{ color: '#F43F5E' }} />
-                  <span>Cannot mark Done (Prerequisites incomplete)</span>
+                  <Lock size={13} style={{ color: '#F43F5E' }} />
+                  <span>Prerequisites incomplete</span>
                 </>
               ) : (
                 <>
-                  <AlertTriangle size={12} style={{ color: '#F59E0B' }} />
-                  <span>Cannot mark Done (High-priority task pending)</span>
+                  <AlertTriangle size={13} style={{ color: '#F59E0B' }} />
+                  <span>Higher priority task pending</span>
                 </>
               )}
             </div>
@@ -242,23 +202,23 @@ export default function TaskCard({ task, onEdit, isNextRecommended = false }) {
 
         {task.status === 'Done' && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.75rem', color: '#34D399', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <CheckCircle2 size={14} /> Completed
+            <span style={{ fontSize: '0.78rem', color: '#34D399', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <CheckCircle2 size={15} /> Completed
             </span>
             <button
               onClick={() => handleTransition('In Progress')}
               className="btn-secondary"
-              style={{ padding: '2px 8px', fontSize: '0.7rem' }}
+              style={{ padding: '4px 10px', fontSize: '0.72rem' }}
               title="Reopen task back to In Progress"
             >
-              <RotateCcw size={11} /> Reopen
+              <RotateCcw size={12} /> Reopen
             </button>
           </div>
         )}
       </div>
 
-      {/* Card Footer: Assignee & Dropdown Selector */}
-      <div className="task-card-footer" style={{ marginTop: '0.75rem' }}>
+      {/* Card Footer: Assignee & Status Dropdown Selector */}
+      <div className="task-card-footer">
         {/* Assignee */}
         <div className="assignee-info">
           {task.assignedUser ? (
@@ -284,11 +244,8 @@ export default function TaskCard({ task, onEdit, isNextRecommended = false }) {
         <select
           value={task.status}
           onChange={(e) => handleTransition(e.target.value)}
-          className="select-input"
+          className="select-input card-status-select"
           style={{
-            padding: '3px 6px',
-            fontSize: '0.75rem',
-            fontWeight: 700,
             borderColor: task.status === 'Done' ? 'rgba(16, 185, 129, 0.4)' : undefined,
             color: task.status === 'Done' ? '#34D399' : task.status === 'In Progress' ? '#60A5FA' : '#9CA3AF'
           }}
@@ -299,13 +256,13 @@ export default function TaskCard({ task, onEdit, isNextRecommended = false }) {
             {task.status === 'Done' 
               ? '✅ Done' 
               : !hasCompletionPermission
-                ? '🔒 Done (Assigned to another member)'
+                ? '🔒 Done (Other member task)'
                 : isDirectFromTodo 
-                  ? '🔒 Done (Move to In Progress first)' 
+                  ? '🔒 Done (Move to In Progress)' 
                   : task.isBlocked 
-                    ? '🔒 Done (Prerequisites incomplete)' 
+                    ? '🔒 Done (Blocked)' 
                     : hasHigherPriorityBlocker 
-                      ? '🔒 Done (High priority pending)' 
+                      ? '🔒 Done (Priority rule)' 
                       : '✅ Done'}
           </option>
         </select>

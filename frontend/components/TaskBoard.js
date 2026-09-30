@@ -8,9 +8,12 @@ import { List, LayoutGrid, AlertCircle, Plus, Sparkles, Play, Check, Flame, Zap,
 const PRIORITY_RANKS = { High: 3, Medium: 2, Low: 1 };
 
 export default function TaskBoard({ tasksToDisplay, onEditTask, onOpenTaskModal }) {
-  const { tasks, updateTask } = useApp();
+  const { tasks, updateTask, currentUser } = useApp();
   const [viewMode, setViewMode] = useState('board'); // 'board' or 'list'
+  const [mobileColumn, setMobileColumn] = useState('all'); // 'all', 'To Do', 'In Progress', 'Done'
   const [actionLoading, setActionLoading] = useState(false);
+
+  const isAdmin = currentUser?.role === 'Admin';
 
   const todoTasks = tasksToDisplay.filter(t => t.status === 'To Do');
   const inProgressTasks = tasksToDisplay.filter(t => t.status === 'In Progress');
@@ -19,8 +22,15 @@ export default function TaskBoard({ tasksToDisplay, onEditTask, onOpenTaskModal 
   // Compute the next eligible task across the system according to:
   // High -> Medium -> Low, respecting dependencies (only unblocked tasks)
   const nextEligibleTask = useMemo(() => {
-    const eligible = tasks.filter(t => t.status !== 'Done' && !t.isBlocked);
+    // If current user is a Member, find their next eligible task
+    const eligible = tasks.filter(t => {
+      if (t.status === 'Done' || t.isBlocked) return false;
+      if (!isAdmin && t.assignedTo !== currentUser?.id) return false;
+      return true;
+    });
+
     if (eligible.length === 0) return null;
+
     return [...eligible].sort((a, b) => {
       const pDiff = (PRIORITY_RANKS[b.priority] || 2) - (PRIORITY_RANKS[a.priority] || 2);
       if (pDiff !== 0) return pDiff;
@@ -28,7 +38,7 @@ export default function TaskBoard({ tasksToDisplay, onEditTask, onOpenTaskModal 
       if (a.status === 'To Do' && b.status === 'In Progress') return 1;
       return new Date(a.createdAt) - new Date(b.createdAt);
     })[0];
-  }, [tasks]);
+  }, [tasks, isAdmin, currentUser?.id]);
 
   const handleNextTaskAction = async () => {
     if (!nextEligibleTask || actionLoading) return;
@@ -57,74 +67,85 @@ export default function TaskBoard({ tasksToDisplay, onEditTask, onOpenTaskModal 
 
   if (tasksToDisplay.length === 0) {
     return (
-      <div className="glass-panel" style={{ margin: '0 2rem 2rem 2rem', padding: '3rem', textAlign: 'center' }}>
-        <AlertCircle size={40} style={{ color: '#9CA3AF', margin: '0 auto 1rem auto' }} />
+      <div className="glass-panel empty-state-box">
+        <AlertCircle size={44} style={{ color: '#9CA3AF', margin: '0 auto 1rem auto' }} />
         <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '0.5rem' }}>No tasks found</h3>
         <p style={{ color: '#9CA3AF', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
-          No tasks match your selected filters or criteria.
+          {isAdmin 
+            ? "No tasks match your selected filters. Create a new task to get started." 
+            : "No tasks are assigned to you matching the criteria."}
         </p>
-        <button className="btn-primary" onClick={onOpenTaskModal} style={{ margin: '0 auto' }}>
-          <Plus size={16} /> Create First Task
-        </button>
+        {isAdmin && (
+          <button className="btn-primary" onClick={onOpenTaskModal} style={{ margin: '0 auto' }}>
+            <Plus size={16} /> Create Task
+          </button>
+        )}
       </div>
     );
   }
 
   return (
-    <div>
-      {/* View Toggle Bar & Priority Quick Action */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '0 2rem 0.75rem 2rem' }}>
-        <div className="nav-tabs">
+    <div className="taskboard-container">
+      {/* View Toggle Bar & Mobile Column Tabs */}
+      <div className="board-controls-header">
+        {/* Mobile Column Switcher (Visible only on phone/mobile screens) */}
+        <div className="mobile-column-tabs">
+          <button 
+            className={`column-tab-btn ${mobileColumn === 'all' ? 'active' : ''}`}
+            onClick={() => setMobileColumn('all')}
+          >
+            All <span className="tab-pill-count">{tasksToDisplay.length}</span>
+          </button>
+          <button 
+            className={`column-tab-btn ${mobileColumn === 'To Do' ? 'active' : ''}`}
+            onClick={() => setMobileColumn('To Do')}
+          >
+            📋 To Do <span className="tab-pill-count">{todoTasks.length}</span>
+          </button>
+          <button 
+            className={`column-tab-btn ${mobileColumn === 'In Progress' ? 'active' : ''}`}
+            onClick={() => setMobileColumn('In Progress')}
+          >
+            🚀 In Progress <span className="tab-pill-count">{inProgressTasks.length}</span>
+          </button>
+          <button 
+            className={`column-tab-btn ${mobileColumn === 'Done' ? 'active' : ''}`}
+            onClick={() => setMobileColumn('Done')}
+          >
+            ✅ Done <span className="tab-pill-count">{doneTasks.length}</span>
+          </button>
+        </div>
+
+        {/* View Mode Toggle: Board vs List */}
+        <div className="nav-tabs view-mode-tabs">
           <button 
             className={`tab-btn ${viewMode === 'board' ? 'active' : ''}`}
             onClick={() => setViewMode('board')}
-            style={{ padding: '0.4rem 0.8rem' }}
+            title="Kanban Board View"
           >
-            <LayoutGrid size={15} /> Board View
+            <LayoutGrid size={15} /> <span className="desktop-text">Board</span>
           </button>
           <button 
             className={`tab-btn ${viewMode === 'list' ? 'active' : ''}`}
             onClick={() => setViewMode('list')}
-            style={{ padding: '0.4rem 0.8rem' }}
+            title="List View"
           >
-            <List size={15} /> List View
+            <List size={15} /> <span className="desktop-text">List</span>
           </button>
         </div>
       </div>
 
       {/* Priority Selection Recommendation Banner */}
       {nextEligibleTask && (
-        <div className="priority-queue-banner" style={{
-          margin: '0 2rem 1.25rem 2rem',
-          padding: '0.85rem 1.25rem',
-          background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.12) 100%)',
-          border: '1px solid rgba(99, 102, 241, 0.35)',
-          borderRadius: '12px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          boxShadow: '0 4px 20px rgba(99, 102, 241, 0.15)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-            <div style={{
-              width: 36,
-              height: 36,
-              borderRadius: '10px',
-              background: 'rgba(99, 102, 241, 0.25)',
-              border: '1px solid rgba(99, 102, 241, 0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#818CF8'
-            }}>
+        <div className="priority-queue-banner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0, flex: 1 }}>
+            <div className="priority-banner-icon">
               <Sparkles size={18} />
             </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: 2 }}>
-                <span style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#A5B4FC' }}>
-                  🎯 Next Priority Task to Handle
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginBottom: 2 }}>
+                <span className="priority-banner-tag">
+                  🎯 Next Priority
                 </span>
                 <span className={`priority-badge ${nextEligibleTask.priority.toLowerCase()}`} style={{ padding: '1px 6px', fontSize: '0.68rem' }}>
                   {getPriorityIcon(nextEligibleTask.priority)}
@@ -134,20 +155,18 @@ export default function TaskBoard({ tasksToDisplay, onEditTask, onOpenTaskModal 
                   ({nextEligibleTask.status})
                 </span>
               </div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#F3F4F6' }}>
+              <div className="priority-banner-title">
                 {nextEligibleTask.title}
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div className="priority-banner-actions">
             <button
               onClick={handleNextTaskAction}
               disabled={actionLoading}
-              className="btn-primary"
+              className="btn-primary priority-action-btn"
               style={{
-                padding: '0.45rem 1rem',
-                fontSize: '0.82rem',
                 background: nextEligibleTask.status === 'In Progress' 
                   ? 'linear-gradient(135deg, #10B981 0%, #059669 100%)' 
                   : 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)'
@@ -155,11 +174,11 @@ export default function TaskBoard({ tasksToDisplay, onEditTask, onOpenTaskModal 
             >
               {nextEligibleTask.status === 'To Do' ? (
                 <>
-                  <Play size={14} fill="currentColor" /> Start Task (Move to In Progress)
+                  <Play size={14} fill="currentColor" /> Start Task
                 </>
               ) : (
                 <>
-                  <Check size={14} /> Complete Task (Mark as Done)
+                  <Check size={14} /> Complete Task
                 </>
               )}
             </button>
@@ -171,71 +190,89 @@ export default function TaskBoard({ tasksToDisplay, onEditTask, onOpenTaskModal 
         /* Kanban Board Columns */
         <div className="kanban-grid">
           {/* Column 1: To Do */}
-          <div className="kanban-column">
-            <div className="column-header">
-              <div className="column-title">
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#64748B' }}></span>
-                To Do
+          {(mobileColumn === 'all' || mobileColumn === 'To Do') && (
+            <div className="kanban-column">
+              <div className="column-header">
+                <div className="column-title">
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#64748B' }}></span>
+                  To Do
+                </div>
+                <span className="badge-count">{todoTasks.length}</span>
               </div>
-              <span className="badge-count">{todoTasks.length}</span>
+              <div className="column-tasks-list">
+                {todoTasks.length === 0 ? (
+                  <div className="column-empty-placeholder">No tasks to do</div>
+                ) : (
+                  todoTasks.map(task => (
+                    <TaskCard 
+                      key={task.id} 
+                      task={task} 
+                      onEdit={onEditTask} 
+                      isNextRecommended={task.id === nextEligibleTask?.id}
+                    />
+                  ))
+                )}
+              </div>
             </div>
-            <div>
-              {todoTasks.map(task => (
-                <TaskCard 
-                  key={task.id} 
-                  task={task} 
-                  onEdit={onEditTask} 
-                  isNextRecommended={task.id === nextEligibleTask?.id}
-                />
-              ))}
-            </div>
-          </div>
+          )}
 
           {/* Column 2: In Progress */}
-          <div className="kanban-column">
-            <div className="column-header">
-              <div className="column-title">
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#3B82F6' }}></span>
-                In Progress
+          {(mobileColumn === 'all' || mobileColumn === 'In Progress') && (
+            <div className="kanban-column">
+              <div className="column-header">
+                <div className="column-title">
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#3B82F6' }}></span>
+                  In Progress
+                </div>
+                <span className="badge-count" style={{ background: 'rgba(59, 130, 246, 0.3)' }}>{inProgressTasks.length}</span>
               </div>
-              <span className="badge-count" style={{ background: 'rgba(59, 130, 246, 0.3)' }}>{inProgressTasks.length}</span>
+              <div className="column-tasks-list">
+                {inProgressTasks.length === 0 ? (
+                  <div className="column-empty-placeholder">No tasks in progress</div>
+                ) : (
+                  inProgressTasks.map(task => (
+                    <TaskCard 
+                      key={task.id} 
+                      task={task} 
+                      onEdit={onEditTask} 
+                      isNextRecommended={task.id === nextEligibleTask?.id}
+                    />
+                  ))
+                )}
+              </div>
             </div>
-            <div>
-              {inProgressTasks.map(task => (
-                <TaskCard 
-                  key={task.id} 
-                  task={task} 
-                  onEdit={onEditTask} 
-                  isNextRecommended={task.id === nextEligibleTask?.id}
-                />
-              ))}
-            </div>
-          </div>
+          )}
 
           {/* Column 3: Done */}
-          <div className="kanban-column">
-            <div className="column-header">
-              <div className="column-title">
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10B981' }}></span>
-                Done
+          {(mobileColumn === 'all' || mobileColumn === 'Done') && (
+            <div className="kanban-column">
+              <div className="column-header">
+                <div className="column-title">
+                  <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10B981' }}></span>
+                  Done
+                </div>
+                <span className="badge-count" style={{ background: 'rgba(16, 185, 129, 0.3)' }}>{doneTasks.length}</span>
               </div>
-              <span className="badge-count" style={{ background: 'rgba(16, 185, 129, 0.3)' }}>{doneTasks.length}</span>
+              <div className="column-tasks-list">
+                {doneTasks.length === 0 ? (
+                  <div className="column-empty-placeholder">No completed tasks</div>
+                ) : (
+                  doneTasks.map(task => (
+                    <TaskCard 
+                      key={task.id} 
+                      task={task} 
+                      onEdit={onEditTask} 
+                      isNextRecommended={task.id === nextEligibleTask?.id}
+                    />
+                  ))
+                )}
+              </div>
             </div>
-            <div>
-              {doneTasks.map(task => (
-                <TaskCard 
-                  key={task.id} 
-                  task={task} 
-                  onEdit={onEditTask} 
-                  isNextRecommended={task.id === nextEligibleTask?.id}
-                />
-              ))}
-            </div>
-          </div>
+          )}
         </div>
       ) : (
         /* List View */
-        <div style={{ margin: '0 2rem 2rem 2rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+        <div className="tasks-list-view">
           {tasksToDisplay.map(task => (
             <TaskCard 
               key={task.id} 

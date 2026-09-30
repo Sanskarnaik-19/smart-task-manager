@@ -8,7 +8,7 @@ export default function UserManagementView({ onOpenUserModal }) {
   const { users, currentUser, loginUser } = useApp();
 
   return (
-    <div style={{ margin: '0 2rem 2rem 2rem' }}>
+    <div className="view-container">
       {/* Header */}
       <div 
         className="glass-panel"

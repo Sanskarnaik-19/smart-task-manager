@@ -13,7 +13,9 @@ import {
   Users, 
   ChevronDown,
   Check,
-  LogIn
+  LogIn,
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
 
 export default function Header({ onOpenTaskModal, onOpenUserModal, onOpenLoginModal }) {
@@ -29,7 +31,7 @@ export default function Header({ onOpenTaskModal, onOpenUserModal, onOpenLoginMo
 
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
-  // Compute counts
+  const isAdmin = currentUser?.role === 'Admin';
   const myTaskCount = tasks.filter(t => t.assignedTo === currentUser?.id).length;
   const blockedCount = tasks.filter(t => t.isBlocked).length;
 
@@ -38,15 +40,28 @@ export default function Header({ onOpenTaskModal, onOpenUserModal, onOpenLoginMo
       {/* Brand Section */}
       <div className="brand-section">
         <div className="brand-logo">STM</div>
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div className="brand-title">
             Smart Task Manager
+          </div>
+          <div className="mobile-only-role" style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+            <span style={{
+              fontSize: '0.68rem',
+              fontWeight: 700,
+              padding: '1px 6px',
+              borderRadius: '4px',
+              background: isAdmin ? 'rgba(236, 72, 153, 0.2)' : 'rgba(59, 130, 246, 0.2)',
+              color: isAdmin ? '#F472B6' : '#60A5FA',
+              border: isAdmin ? '1px solid rgba(236, 72, 153, 0.4)' : '1px solid rgba(59, 130, 246, 0.4)'
+            }}>
+              {isAdmin ? '👑 Admin' : `👤 ${currentUser?.name || 'Member'}`}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Main Navigation Tabs */}
-      <nav className="nav-tabs">
+      {/* Main Navigation Tabs - Visible on Desktop & Tablets */}
+      <nav className="nav-tabs desktop-nav-tabs">
         <button 
           className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
           onClick={() => setActiveTab('all')}
@@ -70,7 +85,7 @@ export default function Header({ onOpenTaskModal, onOpenUserModal, onOpenLoginMo
           onClick={() => setActiveTab('blocked')}
         >
           <Lock size={16} />
-          Blocked Tasks
+          Blocked
           {blockedCount > 0 && <span className="badge-count danger">{blockedCount}</span>}
         </button>
 
@@ -79,7 +94,7 @@ export default function Header({ onOpenTaskModal, onOpenUserModal, onOpenLoginMo
           onClick={() => setActiveTab('graph')}
         >
           <GitFork size={16} />
-          Dependency Hub
+          Dependencies
         </button>
 
         <button 
@@ -87,28 +102,18 @@ export default function Header({ onOpenTaskModal, onOpenUserModal, onOpenLoginMo
           onClick={() => setActiveTab('users')}
         >
           <Users size={16} />
-          Users
-          <span className="badge-count">{users.length}</span>
+          Team ({users.length})
         </button>
       </nav>
 
-      {/* User Login Switcher & Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-        {/* Reset Database Button */}
-        <button 
-          className="btn-secondary" 
-          onClick={resetDatabase}
-          title="Reset tasks to sample state"
-          style={{ padding: '0.6rem 0.8rem' }}
-        >
-          <RotateCcw size={16} />
-        </button>
-
+      {/* User Session Switcher & Primary Action */}
+      <div className="header-actions">
         {/* User Profile / Mock Auth Selector */}
         <div style={{ position: 'relative' }}>
           <div 
             className="user-profile-pill"
             onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+            title="Click to switch user or manage session"
           >
             {currentUser ? (
               <>
@@ -118,7 +123,7 @@ export default function Header({ onOpenTaskModal, onOpenUserModal, onOpenLoginMo
                 >
                   {currentUser.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', paddingRight: 4 }}>
+                <div className="user-pill-details">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fff' }}>
                       {currentUser.name}
@@ -128,11 +133,11 @@ export default function Header({ onOpenTaskModal, onOpenUserModal, onOpenLoginMo
                       fontWeight: 800,
                       padding: '1px 6px',
                       borderRadius: '4px',
-                      background: currentUser.role === 'Admin' ? 'rgba(236, 72, 153, 0.25)' : 'rgba(59, 130, 246, 0.25)',
-                      color: currentUser.role === 'Admin' ? '#F472B6' : '#60A5FA',
-                      border: currentUser.role === 'Admin' ? '1px solid rgba(236, 72, 153, 0.4)' : '1px solid rgba(59, 130, 246, 0.4)'
+                      background: isAdmin ? 'rgba(236, 72, 153, 0.25)' : 'rgba(59, 130, 246, 0.25)',
+                      color: isAdmin ? '#F472B6' : '#60A5FA',
+                      border: isAdmin ? '1px solid rgba(236, 72, 153, 0.4)' : '1px solid rgba(59, 130, 246, 0.4)'
                     }}>
-                      {currentUser.role === 'Admin' ? '👑 Admin' : '👤 Member'}
+                      {isAdmin ? '👑 Admin' : '👤 Member'}
                     </span>
                   </div>
                   <span style={{ fontSize: '0.7rem', color: '#9CA3AF' }}>
@@ -145,80 +150,93 @@ export default function Header({ onOpenTaskModal, onOpenUserModal, onOpenLoginMo
                 Select User
               </span>
             )}
-            <ChevronDown size={14} style={{ color: '#9CA3AF' }} />
+            <ChevronDown size={14} style={{ color: '#9CA3AF', marginLeft: 2 }} />
           </div>
 
           {/* User Selector Dropdown Menu */}
           {userDropdownOpen && (
             <div 
-              className="glass-panel"
+              className="glass-panel user-dropdown-menu"
               style={{
                 position: 'absolute',
-                top: '110%',
+                top: '115%',
                 right: 0,
-                width: 250,
+                width: 270,
                 padding: '8px',
-                zIndex: 60,
-                boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+                zIndex: 100,
+                boxShadow: '0 15px 35px rgba(0,0,0,0.6)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '4px'
               }}
             >
-              <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#9CA3AF', padding: '6px 8px', textTransform: 'uppercase' }}>
-                Switch User (Mock Auth)
+              <div style={{ 
+                fontSize: '0.7rem', 
+                fontWeight: 800, 
+                color: '#9CA3AF', 
+                padding: '6px 8px', 
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <span>Switch Role / User</span>
+                <span style={{ color: '#818CF8' }}>Mock Auth</span>
               </div>
               
-              {users.map(u => (
-                <div
-                  key={u.id}
-                  onClick={() => {
-                    loginUser(u.id);
-                    setUserDropdownOpen(false);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justify: 'space-between',
-                    padding: '8px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    background: currentUser?.id === u.id ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div 
-                      className="avatar-circle" 
-                      style={{ backgroundColor: u.avatarColor, width: 28, height: 28, fontSize: '0.75rem' }}
+              <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {users.map(u => {
+                  const isCurrent = currentUser?.id === u.id;
+                  const isUserAdmin = u.role === 'Admin';
+                  return (
+                    <div
+                      key={u.id}
+                      onClick={() => {
+                        loginUser(u.id);
+                        setUserDropdownOpen(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        background: isCurrent ? 'rgba(99, 102, 241, 0.2)' : 'transparent',
+                        border: isCurrent ? '1px solid rgba(99, 102, 241, 0.3)' : '1px solid transparent',
+                        transition: 'all 0.15s ease'
+                      }}
                     >
-                      {u.name.charAt(0)}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div 
+                          className="avatar-circle" 
+                          style={{ backgroundColor: u.avatarColor, width: 28, height: 28, fontSize: '0.75rem' }}
+                        >
+                          {u.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>
+                            {u.name} {isUserAdmin && '👑'}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: '#9CA3AF' }}>
+                            {isUserAdmin ? 'Admin (Can create & assign)' : 'Member (Assigned tasks)'}
+                          </div>
+                        </div>
+                      </div>
+                      {isCurrent && <Check size={14} style={{ color: '#6366F1' }} />}
                     </div>
-                    <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#fff' }}>{u.name}</div>
-                      <div style={{ fontSize: '0.7rem', color: '#9CA3AF' }}>@{u.username} • {u.role === 'Admin' ? '👑 Admin' : '👤 Member'}</div>
-                    </div>
-                  </div>
-                  {currentUser?.id === u.id && <Check size={14} style={{ color: '#6366F1' }} />}
-                </div>
-              ))}
+                  );
+                })}
+              </div>
 
+              {/* Action buttons inside dropdown */}
               <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 6, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <button 
                   onClick={() => {
                     setUserDropdownOpen(false);
                     onOpenLoginModal();
                   }}
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    fontSize: '0.8rem',
-                    color: '#818CF8',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}
+                  className="dropdown-action-btn"
                 >
                   <LogIn size={14} /> Log In with Username
                 </button>
@@ -228,39 +246,41 @@ export default function Header({ onOpenTaskModal, onOpenUserModal, onOpenLoginMo
                     setUserDropdownOpen(false);
                     onOpenUserModal();
                   }}
-                  style={{
-                    width: '100%',
-                    padding: '6px 8px',
-                    fontSize: '0.8rem',
-                    color: '#6366F1',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 6
-                  }}
+                  className="dropdown-action-btn"
                 >
-                  <UserPlus size={14} /> Register New User
+                  <UserPlus size={14} /> Register New Team Member
+                </button>
+
+                <button 
+                  onClick={() => {
+                    setUserDropdownOpen(false);
+                    resetDatabase();
+                  }}
+                  className="dropdown-action-btn reset"
+                >
+                  <RotateCcw size={14} /> Reset Sample Data
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Action Buttons */}
-        <button className="btn-secondary" onClick={onOpenLoginModal}>
-          <LogIn size={16} />
-          Sign In
-        </button>
-
-        <button className="btn-secondary" onClick={onOpenUserModal}>
-          <UserPlus size={16} />
-          New User
-        </button>
-
-        <button className="btn-primary" onClick={onOpenTaskModal}>
-          <Plus size={18} />
-          Create Task
-        </button>
+        {/* Create Task Button: SHOWN ONLY FOR ADMIN */}
+        {isAdmin ? (
+          <button 
+            className="btn-primary desktop-create-btn" 
+            onClick={onOpenTaskModal}
+            title="Create a new task and assign to team members"
+          >
+            <Plus size={18} />
+            <span>Create Task</span>
+          </button>
+        ) : (
+          <div className="member-indicator-badge desktop-only" title="Task creation is restricted to Administrators">
+            <ShieldCheck size={14} />
+            <span>Member Access</span>
+          </div>
+        )}
       </div>
     </header>
   );

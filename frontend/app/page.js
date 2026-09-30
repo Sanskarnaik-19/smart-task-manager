@@ -12,6 +12,7 @@ import UserManagementView from '../components/UserManagementView';
 import TaskModal from '../components/TaskModal';
 import UserModal from '../components/UserModal';
 import LoginModal from '../components/LoginModal';
+import MobileBottomNav from '../components/MobileBottomNav';
 
 export default function Home() {
   const { tasks, filteredTasks, activeTab, currentUser, loading } = useApp();
@@ -40,7 +41,7 @@ export default function Home() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="app-container">
       {/* Top Header Navigation & Action Bar */}
       <Header
         onOpenTaskModal={handleOpenCreateTask}
@@ -49,7 +50,7 @@ export default function Home() {
       />
 
       {/* Main Content Area */}
-      <main style={{ flex: 1, paddingBottom: '3rem' }}>
+      <main className="main-content">
         {/* Metric Summary Cards */}
         <StatSummary />
 
@@ -67,8 +68,8 @@ export default function Home() {
 
             {/* Task Board / List */}
             {loading ? (
-              <div style={{ textTransform: 'center', textAlign: 'center', padding: '4rem', color: '#9CA3AF' }}>
-                <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Loading state from Express server...</div>
+              <div style={{ textAlign: 'center', padding: '4rem', color: '#9CA3AF' }}>
+                <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Loading state from server...</div>
               </div>
             ) : (
               <TaskBoard
@@ -80,6 +81,9 @@ export default function Home() {
           </>
         )}
       </main>
+
+      {/* Mobile Bottom Navigation & Admin FAB */}
+      <MobileBottomNav onOpenCreateTask={handleOpenCreateTask} />
 
       {/* Modals */}
       <TaskModal

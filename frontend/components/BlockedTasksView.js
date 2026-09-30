@@ -23,7 +23,7 @@ export default function BlockedTasksView({ onEditTask }) {
   }
 
   return (
-    <div style={{ margin: '0 2rem 2rem 2rem' }}>
+    <div className="view-container">
       {/* Banner */}
       <div 
         className="glass-panel"

@@ -202,7 +202,7 @@ export default function DependencyGraphView() {
   };
 
   return (
-    <div style={{ margin: '0 2rem 2rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div className="view-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* 1. TOP HEADER & METRIC OVERVIEW */}
       <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

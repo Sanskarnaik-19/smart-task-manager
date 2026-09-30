@@ -134,7 +134,7 @@ async function runTests() {
   assert(res.status === 403 && data.message.includes("cannot change the assignee"), 
     "A member cannot change the assignee of their task -> rejected by backend (403)");
 
-  // TEST 11: Member Priya cannot create a task assigned to someone else
+  // TEST 11: Member Priya cannot create a task (Tasks can only be created by Admin)
   res = await fetch(`${API}/tasks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-user-id': 'usr_priya' },
@@ -142,12 +142,12 @@ async function runTests() {
       title: "Priya Sneaky Task",
       priority: "Medium",
       status: "To Do",
-      assignedTo: "usr_rahul"
+      assignedTo: "usr_priya"
     })
   });
   data = await res.json();
-  assert(res.status === 403 && data.message.includes("cannot assign tasks to other users"), 
-    "A member cannot assign tasks to other users upon creation -> rejected (403)");
+  assert(res.status === 403 && data.message.includes("Only administrators can create tasks"), 
+    "A member cannot create tasks -> rejected by backend (403)");
 
   // TEST 12: Dependency and priority rules continue to work normally:
   // tsk_002 is assigned to Rahul (High, In Progress). tsk_003 is assigned to Priya (Medium, In Progress).

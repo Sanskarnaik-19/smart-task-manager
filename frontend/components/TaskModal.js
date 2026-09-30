@@ -2,11 +2,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { X, Link2, AlertCircle, Lock, AlertTriangle } from 'lucide-react';
+import { X, Link2, AlertCircle, Lock, AlertTriangle, ShieldAlert } from 'lucide-react';
 
 export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
   const { tasks, users, createTask, updateTask, currentUser } = useApp();
 
+  const isAdmin = currentUser?.role === 'Admin';
   const isMember = currentUser?.role === 'Member';
 
   const [title, setTitle] = useState('');
@@ -31,11 +32,11 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
       setDescription('');
       setPriority('Medium');
       setStatus('To Do');
-      setAssignedTo(isMember ? currentUser?.id : (users[0]?.id || ''));
+      setAssignedTo(users[0]?.id || '');
       setSelectedDependencies([]);
     }
     setErrorMsg('');
-  }, [taskToEdit, users, isOpen, isMember, currentUser]);
+  }, [taskToEdit, users, isOpen]);
 
   // Check if any selected dependency is incomplete (not 'Done')
   const hasIncompleteDependencies = useMemo(() => {
@@ -122,6 +123,12 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
     e.preventDefault();
     setErrorMsg('');
 
+    // Role Enforcement: Tasks can ONLY be created by Admin
+    if (!taskToEdit && !isAdmin) {
+      setErrorMsg("Access denied: Only administrators can create tasks.");
+      return;
+    }
+
     if (!title.trim()) {
       setErrorMsg('Task Title is required.');
       return;
@@ -170,6 +177,9 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
   // Available tasks to depend on (excluding current task if editing)
   const availableTasks = tasks.filter(t => !taskToEdit || t.id !== taskToEdit.id);
 
+  // If non-admin tries to open create task modal
+  const isCreateBlockedForMember = !taskToEdit && !isAdmin;
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-container" onClick={(e) => e.stopPropagation()}>
@@ -178,7 +188,7 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
           <div className="modal-title">
             {taskToEdit ? 'Edit Task' : 'Create New Task'}
           </div>
-          <button className="icon-btn" onClick={onClose}>
+          <button className="icon-btn" onClick={onClose} aria-label="Close modal">
             <X size={18} />
           </button>
         </div>
@@ -186,6 +196,15 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
         {/* Body Form */}
         <form onSubmit={handleSubmit}>
           <div className="modal-body">
+            {isCreateBlockedForMember && (
+              <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '12px 14px', borderRadius: 8, color: '#F87171', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <ShieldAlert size={20} className="shrink-0" />
+                <div>
+                  <strong>Admin Only Action:</strong> Tasks can only be created by an Administrator. You are currently logged in as a Member.
+                </div>
+              </div>
+            )}
+
             {errorMsg && (
               <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', padding: '10px 14px', borderRadius: 8, color: '#F87171', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <AlertCircle size={16} /> {errorMsg}
@@ -201,6 +220,7 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
                 placeholder="e.g., Implement OAuth Authentication"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                disabled={isCreateBlockedForMember}
                 required
               />
             </div>
@@ -213,17 +233,19 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
                 placeholder="Provide task scope and details..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
+                disabled={isCreateBlockedForMember}
               />
             </div>
 
             {/* Priority & Status */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
               <div className="form-group">
                 <label className="form-label">Priority</label>
                 <select 
                   className="form-select"
                   value={priority}
                   onChange={(e) => setPriority(e.target.value)}
+                  disabled={isCreateBlockedForMember}
                 >
                   <option value="Low">🌱 Low</option>
                   <option value="Medium">⚡ Medium</option>
@@ -237,6 +259,7 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
                   className="form-select"
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
+                  disabled={isCreateBlockedForMember}
                 >
                   <option value="To Do">📋 To Do</option>
                   <option value="In Progress">🚀 In Progress</option>
@@ -291,17 +314,17 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
               </div>
             )}
 
-            {/* Assignee */}
+            {/* Assignee - Admin Only can modify */}
             <div className="form-group">
               <label className="form-label">
-                Assign To User
-                {isMember && <span style={{ fontSize: '0.72rem', color: '#9CA3AF', marginLeft: 8 }}>(Locked: Members cannot reassign tasks)</span>}
+                Assign To Team Member
+                {!isAdmin && <span style={{ fontSize: '0.72rem', color: '#9CA3AF', marginLeft: 8 }}>(Admin Only)</span>}
               </label>
               <select
                 className="form-select"
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
-                disabled={isMember}
+                disabled={!isAdmin || isCreateBlockedForMember}
               >
                 <option value="">Unassigned</option>
                 {users.map(u => (
@@ -315,9 +338,9 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
             {/* Dependencies Checklist */}
             <div className="form-group">
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Link2 size={14} /> Task Dependencies (Prerequisites that must be completed first)
+                <Link2 size={14} /> Task Dependencies (Prerequisites that must complete first)
               </label>
-              <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid var(--bg-card-border)', borderRadius: 8, padding: 10, maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid var(--bg-card-border)', borderRadius: 8, padding: 10, maxHeight: 160, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {availableTasks.length === 0 ? (
                   <div style={{ fontSize: '0.8rem', color: '#9CA3AF', fontStyle: 'italic' }}>
                     No other tasks exist yet to depend on.
@@ -335,7 +358,7 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
                           alignItems: 'center', 
                           gap: 10, 
                           fontSize: '0.82rem', 
-                          cursor: isCycleRisk ? 'not-allowed' : 'pointer',
+                          cursor: (isCycleRisk || isCreateBlockedForMember) ? 'not-allowed' : 'pointer',
                           padding: '6px 8px',
                           borderRadius: 6,
                           opacity: isCycleRisk ? 0.45 : 1,
@@ -346,7 +369,7 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
                         <input
                           type="checkbox"
                           checked={isChecked}
-                          disabled={isCycleRisk}
+                          disabled={isCycleRisk || isCreateBlockedForMember}
                           onChange={() => !isCycleRisk && toggleDependency(t.id)}
                         />
                         <span style={{ color: '#fff', fontWeight: 600 }}>{t.title}</span>
@@ -380,7 +403,11 @@ export default function TaskModal({ isOpen, onClose, taskToEdit = null }) {
             <button type="button" className="btn-secondary" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={submitting}>
+            <button 
+              type="submit" 
+              className="btn-primary" 
+              disabled={submitting || isCreateBlockedForMember}
+            >
               {submitting ? 'Saving...' : taskToEdit ? 'Update Task' : 'Create Task'}
             </button>
           </div>

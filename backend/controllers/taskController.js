@@ -213,17 +213,15 @@ const createTask = (req, res) => {
       });
     }
 
-    // Role Enforcement: Members cannot assign tasks to other users
-    let finalAssignedTo = assignedTo || null;
+    // Role Enforcement: Tasks can ONLY be created by an Admin
     if (!req.isAdmin) {
-      if (assignedTo && assignedTo !== req.user.id) {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied: Members cannot assign tasks to other users."
-        });
-      }
-      finalAssignedTo = req.user.id;
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: Only administrators can create tasks."
+      });
     }
+
+    const finalAssignedTo = assignedTo || null;
     
     // Sanitize and deduplicate dependencies, ensuring IDs exist in database
     const taskDependencies = Array.isArray(dependencies) 
